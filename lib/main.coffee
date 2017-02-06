@@ -8,7 +8,7 @@ module.exports =
   #  },
   getProvider: () ->
     return {
-      # wordRegExp: /[0-9a-f]{7}\.\.[0-9a-f]{7}/g,
+      lineRegExp: /index [0-9a-f]{7}\.\.[0-9a-f]{7}/g
       providerName: "split-diff-hyperclick"
       getSuggestion: (textEditor, indexString, range) ->
         console.log('getSuggestionForWord', textEditor, indexString, range)
