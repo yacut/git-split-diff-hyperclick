@@ -1,0 +1,32 @@
+{
+  "name": "git-split-diff-hyperclick",
+  "main": "./lib/main",
+  "version": "0.1.0",
+  "description": "Git split diff with hyperclick",
+  "keywords": [
+    "hyperclick",
+    "path",
+    "git"
+  ],
+  "repository": "https://github.com/yacut/git-split-diff-hyperclick",
+  "license": "MIT",
+  "engines": {
+    "atom": ">=1.0.0 <2.0.0"
+  },
+  "dependencies": {
+    "atom-package-deps": "^4.0.1",
+    "atom-space-pen-views": "^2.0.3",
+    "split-diff": "https://github.com/mupchrch/split-diff/archive/v0.8.3.tar.gz",
+    "underscore-plus": "^1.6.6"
+  },
+  "package-deps": [
+    "hyperclick"
+  ],
+  "providedServices": {
+    "hyperclick.provider": {
+      "versions": {
+        "0.0.0": "getProvider"
+      }
+    }
+  }
+}

@@ -1,1 +1,3 @@
-# split-diff-hyperclick
+# git-split-diff-hyperclick
+
+click on index to diff files
