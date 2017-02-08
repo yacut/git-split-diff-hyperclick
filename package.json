@@ -5,8 +5,9 @@
   "description": "Git split diff with hyperclick",
   "keywords": [
     "hyperclick",
-    "path",
-    "git"
+    "diff",
+    "git",
+    "git-plus"
   ],
   "repository": "https://github.com/yacut/git-split-diff-hyperclick",
   "license": "MIT",

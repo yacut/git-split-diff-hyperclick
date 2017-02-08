@@ -11,30 +11,61 @@ SplitDiff = require 'split-diff'
 module.exports =
 class GitRevisionView
 
-  @FILE_PREFIX = "Git Plus - "
-
-  @showRevision: (editor, branch, options={}) ->
-    options = _.defaults options,
-      diff: false
-
+  fileContentA = ""
+  fileContentB = ""
+  @showRevision: (editor, revA, filePathA, revB, filePathB) ->
     SplitDiff.disable(false)
+    fileContentA = ""
+    fileContentB = ""
+    promise = @_getRepo(filePathA)
+    @_loadFileContentA(editor, revA, filePathA, revB, filePathB)
 
-    file = editor.getPath()
-
-    fileContents = ""
-    stdout = (output) =>
-      fileContents += output
+  @_loadFileContentA: (editorA, revA, filePathA, revB, filePathB) ->
+    fileContentA = ""
+    stdout = (output) ->
+      fileContentA += output
     exit = (code) =>
-      if code is 0 || options.type is "D"
-        @_showRevision(file, editor, branch, fileContents, options)
+      if code is 0
+        outputFilePath = @_getFilePath(revA, filePathA)
+        tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
+        fs.writeFile outputFilePath, tempContent, (error) ->
+          if not error
+            promise = atom.workspace.open fullPath,
+              split: "left"
+              activatePane: false
+              activateItem: true
+              searchAllPanes: false
+            promise.then (editor) ->
+              @_loadFileContentB(editorA, revA, filePathA, revB, filePathB)
       else
-        atom.notifications.addError "Could not retrieve revision for #{path.basename(file)} (#{code})"
+        atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathA)} (#{code})"
 
-    showArgs = ["show", "#{branch}:./#{path.basename(file)}"]
+    showArgs = ["show", "#{revA} ./#{filePathA}"]
+    console.log('LOAD A', showArgs, filePathA)
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
-      options: { cwd:path.dirname(file) },
+      options: { cwd:atom.project.getPaths()[0] },
+      stdout,
+      exit
+    })
+
+  @_loadFileContentB: (editorA, revA, filePathA, revB, filePathB) ->
+
+    stdout = (output) ->
+      fileContentB += output
+    exit = (code) =>
+      if code is 0
+        @_showRevision(editorA, revA, filePathA, revB, filePathB, fileContentA, fileContentB)
+      else
+        atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathB)} (#{code})"
+
+    showArgs = ["show", "#{revB} ./#{filePathB}"]
+    console.log('LOAD B', showArgs, filePathB)
+    process = new BufferedProcess({
+      command: "git",
+      args: showArgs,
+      options: { cwd:atom.project.getPaths()[0] },
       stdout,
       exit
     })
@@ -46,12 +77,13 @@ class GitRevisionView
       lineNumber = editorEle.getLastVisibleScreenRow()
       return lineNumber - 5
 
-
-  @_showRevision: (file, editor, branch, fileContents, options={}) ->
+  @_getFilePath: (rev, filePath) ->
     outputDir = "#{atom.getConfigDirPath()}/git-plus"
     fs.mkdir outputDir if not fs.existsSync outputDir
-    outputFilePath = "#{outputDir}/#{@FILE_PREFIX}#{path.basename(file)}"
-    outputFilePath += ".diff" if options.diff
+    return "#{outputDir}/#{rev}#{path.basename(filePath)}.diff"
+
+  @_showRevision: (editorA, revA, filePathA, revB, filePathB) ->
+    outputFilePath = @_getFilePath(revB, filePathB)
     tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
     fs.writeFile outputFilePath, tempContent, (error) =>
       if not error
@@ -66,31 +98,31 @@ class GitRevisionView
             activatePane: false
             activateItem: true
             searchAllPanes: false
-          promise.then (newTextEditor) =>
-            @_updateNewTextEditor(newTextEditor, editor, branch, fileContents)
+          promise.then (editorB) =>
+            @_updateNewTextEditor(editorA, editorB, revA, filePathA, revB, filePathB, fileContents)
 
 
-  @_updateNewTextEditor: (newTextEditor, editor, branch, fileContents) ->
+  @_updateNewTextEditor: (editorA, editorB, gitRevision, fileContents) ->
     _.delay =>
       lineEnding = editor.buffer?.lineEndingForRow(0) || "\n"
       fileContents = fileContents.replace(/(\r\n|\n)/g, lineEnding)
-      newTextEditor.buffer.setPreferredLineEnding(lineEnding)
-      newTextEditor.setText(fileContents)
-      newTextEditor.buffer.cachedDiskContents = fileContents
-      @_splitDiff(editor, newTextEditor)
-      @_syncScroll(editor, newTextEditor)
-      @_affixTabTitle newTextEditor, branch
+      editorB.buffer.setPreferredLineEnding(lineEnding)
+      editorB.setText(fileContents)
+      editorB.buffer.cachedDiskContents = fileContents
+      @_splitDiff(editor, editorB)
+      @_syncScroll(editor, editorB)
+      @_affixTabTitle editorB, gitRevision
     , 300
 
 
-  @_affixTabTitle: (newTextEditor, branch) ->
+  @_affixTabTitle: (newTextEditor, gitRevision) ->
     $el = $(atom.views.getView(newTextEditor))
     $tabTitle = $el.parents('atom-pane').find('li.tab.active .title')
     titleText = $tabTitle.text()
     if titleText.indexOf('@') >= 0
-      titleText = titleText.replace(/\@.*/, "@#{branch}")
+      titleText = titleText.replace(/\@.*/, "@#{gitRevision}")
     else
-      titleText += " @#{branch}"
+      titleText += " @#{gitRevision}"
     $tabTitle.text(titleText)
 
 
@@ -104,15 +136,15 @@ class GitRevisionView
     SplitDiff._setConfig 'ignoreWhitespace', true
     SplitDiff._setConfig 'syncHorizontalScroll', true
     SplitDiff.editorSubscriptions = new CompositeDisposable()
-    SplitDiff.editorSubscriptions.add editors.editor1.onDidStopChanging =>
+    SplitDiff.editorSubscriptions.add editors.editor1.onDidStopChanging ->
       SplitDiff.updateDiff(editors) if editors?
-    SplitDiff.editorSubscriptions.add editors.editor2.onDidStopChanging =>
+    SplitDiff.editorSubscriptions.add editors.editor2.onDidStopChanging ->
       SplitDiff.updateDiff(editors) if editors?
-    SplitDiff.editorSubscriptions.add editors.editor1.onDidDestroy =>
-      editors = null;
+    SplitDiff.editorSubscriptions.add editors.editor1.onDidDestroy ->
+      editors = null
       SplitDiff.disable(false)
-    SplitDiff.editorSubscriptions.add editors.editor2.onDidDestroy =>
-      editors = null;
+    SplitDiff.editorSubscriptions.add editors.editor2.onDidDestroy ->
+      editors = null
       SplitDiff.disable(false)
     SplitDiff.updateDiff editors
 
@@ -122,3 +154,18 @@ class GitRevisionView
       return if newTextEditor.isDestroyed()
       newTextEditor.scrollToBufferPosition({row: @_getInitialLineNumber(editor), column: 0})
     , 50
+
+  @_getRepo: (filePath) ->
+    new Promise (resolve, reject) ->
+      project = atom.project
+      filePath = path.join(atom.project.getPaths()[0], filePath)
+      console.log("PATH", filePath)
+      directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
+      if directory?
+        project.repositoryForDirectory(directory).then (repo) ->
+          submodule = repo.repo.submoduleForPath(filePath)
+          if submodule? then resolve(submodule) else resolve(repo)
+        .catch (e) ->
+          reject(e)
+      else
+        reject "no current file"

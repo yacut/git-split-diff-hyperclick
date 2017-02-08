@@ -9,22 +9,26 @@ module.exports =
 
   getProvider: () ->
     return {
-      lineRegExp: /index [0-9a-f]{7}\.\.[0-9a-f]{7}/g
       providerName: "split-diff-hyperclick"
       getSuggestion: (textEditor, point) ->
-        if textEditor.getGrammar().name != 'Word Diff'
-          return null
+        if textEditor.getGrammar().name != 'Word Diff' || !textEditor || !point
+          return undefined
         else
           editor = textEditor
-          range = new Range(new Point(point.row, 0), new Point(point.row, 1000))
-          indexString = editor.getTextInBufferRange(range)
-          match = indexString.match /index ([0-9a-f]{7})\.\.([0-9a-f]{7})/g
-          if !match || match is null || match.length is 0
-            return null
-
-          return {
-            range,
-            callback: ->
-              gitRevisionView.showRevision(editor, "f747c7e")
-          }
+          rangeIndex = new Range(new Point(point.row, 0), new Point(point.row, 1000))
+          gitIndexString = editor.getTextInBufferRange(rangeIndex)
+          rangeDiff = new Range(new Point(point.row - 1, 0), new Point(point.row, 1000))
+          gitDiffString = editor.getTextInBufferRange(rangeDiff)
+          diffMatched = gitDiffString.match /diff --git a\/(.*) b\/(.*)/
+          indexMatched = gitIndexString.match /index ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+          if !indexMatched || !diffMatched
+            return undefined
+          else
+            [diffMatched, filePathA, filePathB] = gitDiffString.match /diff --git a\/(.*) b\/(.*)/
+            [indexMatched, revA, revB] = gitIndexString.match /index ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+            return {
+              range: rangeIndex,
+              callback: ->
+                gitRevisionView.showRevision(editor, revA, filePathA, revB, filePathB)
+            }
     }
