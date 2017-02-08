@@ -23,8 +23,12 @@ class GitRevisionView
   @_loadFileContentA: (editorA, revA, filePathA, revB, filePathB) ->
     fileContentA = ""
     stdout = (output) ->
+      console.log("OUTPUT", output)
       fileContentA += output
+    stderr = (error) ->
+      console.log("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
+      console.log("CODE", code, fileContentA)
       if code is 0
         outputFilePath = @_getFilePath(revA, filePathA)
         tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
@@ -47,6 +51,7 @@ class GitRevisionView
       args: showArgs,
       options: { cwd:atom.project.getPaths()[0] },
       stdout,
+      stderr,
       exit
     })
 
@@ -54,19 +59,22 @@ class GitRevisionView
 
     stdout = (output) ->
       fileContentB += output
+    stderr = (error) ->
+      console.log("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
       if code is 0
         @_showRevision(editorA, revA, filePathA, revB, filePathB, fileContentA, fileContentB)
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathB)} (#{code})"
 
-    showArgs = ["show", "#{revB} ./#{filePathB}"]
+    showArgs = ["show", "#{revB}:./#{filePathB}"]
     console.log('LOAD B', showArgs, filePathB)
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
       options: { cwd:atom.project.getPaths()[0] },
       stdout,
+      stderr,
       exit
     })
 
