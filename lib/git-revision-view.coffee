@@ -128,6 +128,7 @@ class GitRevisionView
       @_splitDiff(editor, editorB)
     , 300
 
+
   @_splitDiff: (editor, newTextEditor) ->
     editors =
       editor1: newTextEditor    # the older revision
@@ -138,4 +139,19 @@ class GitRevisionView
     SplitDiff.diffPanes()
     SplitDiff.updateDiff(editors)
     syncScroll = new SyncScroll(editors.editor1, editors.editor2, true)
+    syncScroll.syncPositions()
+
+  @_getRepo: (filePath) -> new Promise (resolve, reject) ->
+      project = atom.project
+      filePath = path.join(atom.project.getPaths()[0], filePath)
+      console.log("PATH", filePath)
+      directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
+      if directory?
+        project.repositoryForDirectory(directory).then (repo) ->
+          submodule = repo.repo.submoduleForPath(filePath)
+          if submodule? then resolve(submodule) else resolve(repo)
+        .catch (e) ->
+          reject(e)
+      else
+        reject "no current file"SyncScroll(editors.editor1, editors.editor2, true)
     syncScroll.syncPositions()
