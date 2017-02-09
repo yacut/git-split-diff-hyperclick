@@ -29,6 +29,6 @@ module.exports =
             return {
               range: rangeIndex,
               callback: ->
-                gitRevisionView.showRevision(editor, revA, filePathA, revB, filePathB)
+                gitRevisionView.showRevision(revA, filePathA, revB, filePathB)
             }
     }

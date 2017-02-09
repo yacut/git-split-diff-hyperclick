@@ -13,7 +13,7 @@ class GitRevisionView
 
   @fileContentA = ""
   @fileContentB = ""
-  @showRevision: (editor, revA, filePathA, revB, filePathB) ->
+  @showRevision: (revA, filePathA, revB, filePathB) ->
     if not SplitDiff
       try
         SplitDiff = require atom.packages.resolvePackagePath('split-diff')
@@ -26,34 +26,30 @@ class GitRevisionView
     @fileContentA = ""
     @fileContentB = ""
     promise = @_getRepo(filePathA)
-    @_loadfileContentA(editor, revA, filePathA, revB, filePathB)
+    @_loadfileContentA(revA, filePathA, revB, filePathB)
 
-  @_loadfileContentA: (editorA, revA, filePathA, revB, filePathB) ->
-    @fileContentA = ""
+  @_loadfileContentA: (revA, filePathA, revB, filePathB) ->
+    self = @
     stdout = (output) ->
-      console.log("OUTPUT", output)
-      @fileContentA += output
+      self.fileContentA += output
     stderr = (error) ->
-      console.log("git-split-diff-hyperclick:ERROR:", error)
+      console.error("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
-      console.log("CODE", code, @fileContentA)
       if code is 0
         outputFilePath = @_getFilePath(revA, filePathA)
-        tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
-        fs.writeFile outputFilePath, tempContent, (error) ->
+        fs.writeFile outputFilePath, self.fileContentA, (error) ->
           if not error
-            promise = atom.workspace.open fullPath,
+            promise = atom.workspace.open outputFilePath,
               split: "left"
-              activatePane: false
+              activatePane: true
               activateItem: true
               searchAllPanes: false
-            promise.then (editor) ->
-              @_loadfileContentB(editorA, revA, filePathA, revB, filePathB)
+            promise.then (editorA) ->
+              self._loadfileContentB(editorA, revA, filePathA, revB, filePathB)
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathA)} (#{code})"
 
-    showArgs = ["show", "#{revA} ./#{filePathA}"]
-    console.log('LOAD A', showArgs, filePathA)
+    showArgs = ["cat-file", "-p", "#{revA}"]
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
@@ -64,19 +60,18 @@ class GitRevisionView
     })
 
   @_loadfileContentB: (editorA, revA, filePathA, revB, filePathB) ->
-
+    self = @
     stdout = (output) ->
-      @fileContentB += output
+      self.fileContentB += output
     stderr = (error) ->
-      console.log("git-split-diff-hyperclick:ERROR:", error)
+      console.error("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
       if code is 0
-        @_showRevision(editorA, revA, filePathA, revB, filePathB, @fileContentA, @fileContentB)
+        @_showRevision(editorA, revA, filePathA, revB, filePathB, self.fileContentB)
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathB)} (#{code})"
 
-    showArgs = ["show", "#{revB}:./#{filePathB}"]
-    console.log('LOAD B', showArgs, filePathB)
+    showArgs = ["cat-file", "-p", "#{revB}"]
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
@@ -96,43 +91,31 @@ class GitRevisionView
   @_getFilePath: (rev, filePath) ->
     outputDir = "#{atom.getConfigDirPath()}/git-plus"
     fs.mkdir outputDir if not fs.existsSync outputDir
-    return "#{outputDir}/#{rev}#{path.basename(filePath)}.diff"
+    return "#{outputDir}/#{rev}##{path.basename(filePath)}"
 
-  @_showRevision: (editorA, revA, filePathA, revB, filePathB) ->
+  @_showRevision: (editorA, revA, filePathA, revB, filePathB, fileContentB) ->
     outputFilePath = @_getFilePath(revB, filePathB)
-    tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
-    fs.writeFile outputFilePath, tempContent, (error) =>
+    fs.writeFile outputFilePath, fileContentB, (error) =>
       if not error
-        promise = atom.workspace.open file,
-          split: "left"
+        promise = atom.workspace.open outputFilePath,
+          split: "right"
           activatePane: false
           activateItem: true
           searchAllPanes: false
-        promise.then (editor) =>
-          promise = atom.workspace.open outputFilePath,
-            split: "right"
-            activatePane: false
-            activateItem: true
-            searchAllPanes: false
-          promise.then (editorB) =>
-            @_updateNewTextEditor(editorA, editorB, revA, filePathA, revB, filePathB, fileContents)
+        promise.then (editorB) =>
+          @_updateNewTextEditor(editorA, editorB)
 
 
-  @_updateNewTextEditor: (editorA, editorB, gitRevision, fileContents) ->
+  @_updateNewTextEditor: (editorA, editorB) ->
     _.delay =>
-      lineEnding = editor.buffer?.lineEndingForRow(0) || "\n"
-      fileContents = fileContents.replace(/(\r\n|\n)/g, lineEnding)
-      editorB.buffer.setPreferredLineEnding(lineEnding)
-      editorB.setText(fileContents)
-      editorB.buffer.cachedDiskContents = fileContents
-      @_splitDiff(editor, editorB)
+      @_splitDiff(editorA, editorB)
     , 300
 
 
-  @_splitDiff: (editor, newTextEditor) ->
+  @_splitDiff: (editorA, editorB) ->
     editors =
-      editor1: newTextEditor    # the older revision
-      editor2: editor           # current rev
+      editor1: editorB    # the older revision
+      editor2: editorA           # current rev
     SplitDiff._setConfig 'diffWords', true
     SplitDiff._setConfig 'ignoreWhitespace', true
     SplitDiff._setConfig 'syncHorizontalScroll', true
@@ -144,7 +127,6 @@ class GitRevisionView
   @_getRepo: (filePath) -> new Promise (resolve, reject) ->
       project = atom.project
       filePath = path.join(atom.project.getPaths()[0], filePath)
-      console.log("PATH", filePath)
       directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
       if directory?
         project.repositoryForDirectory(directory).then (repo) ->
