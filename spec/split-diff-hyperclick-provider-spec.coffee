@@ -1,18 +1,31 @@
 gitSplitDiffHyperclick = require "../lib/main"
 
 describe "GitSplitDiffHyperclick", ->
-  match = (s) ->
-    expect(s).toMatch gitSplitDiffHyperclick.getProvider().lineRegExp
+  indexMatch = (s) ->
+    expect(s).toMatch gitSplitDiffHyperclick.getProvider().indexRegex
 
-  notMatch = (s) ->
-    expect(s).not.toMatch gitSplitDiffHyperclick.getProvider().lineRegExp
+  indexNotMatch = (s) ->
+    expect(s).not.toMatch gitSplitDiffHyperclick.getProvider().indexRegex
 
-  describe "wordRegExp", ->
+  describe "Index regex", ->
     it "should match git index mask", ->
-      match("index d8ebf7f..77f6642 100644")
+      indexMatch("index d8ebf7f..77f6642 100644")
 
     it "should match git index mask without permissions", ->
-      match("index abcdef0..1234567")
+      indexMatch("index abcdef0..1234567")
 
-    it "should not match another git diff strings", ->
-      notMatch("diff --git")
+    it "should not match another strings", ->
+      indexNotMatch("whatever")
+
+  diffMatch = (s) ->
+    expect(s).toMatch gitSplitDiffHyperclick.getProvider().diffRegex
+
+  diffNotMatch = (s) ->
+    expect(s).not.toMatch gitSplitDiffHyperclick.getProvider().diffRegex
+
+  describe "Diff regex", ->
+    it "should match git index mask", ->
+      diffMatch("diff --git a/foo.bar b/foo.bar")
+
+    it "should not match another index strings", ->
+      diffNotMatch("index abcdef0..1234567")
