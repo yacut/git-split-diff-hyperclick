@@ -153,5 +153,4 @@ class GitRevisionView
         .catch (e) ->
           reject(e)
       else
-        reject "no current file"SyncScroll(editors.editor1, editors.editor2, true)
-    syncScroll.syncPositions()
+        reject "no current file"
