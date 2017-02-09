@@ -5,30 +5,38 @@ fs = require 'fs'
 {CompositeDisposable, BufferedProcess} = require "atom"
 {$} = require "atom-space-pen-views"
 
-SplitDiff = require 'split-diff'
-
+SplitDiff = null
+SyncScroll = null
 
 module.exports =
 class GitRevisionView
 
-  fileContentA = ""
-  fileContentB = ""
+  @fileContentA = ""
+  @fileContentB = ""
   @showRevision: (editor, revA, filePathA, revB, filePathB) ->
-    SplitDiff.disable(false)
-    fileContentA = ""
-    fileContentB = ""
-    promise = @_getRepo(filePathA)
-    @_loadFileContentA(editor, revA, filePathA, revB, filePathB)
+    if not SplitDiff
+      try
+        SplitDiff = require atom.packages.resolvePackagePath('split-diff')
+        SyncScroll = require atom.packages.resolvePackagePath('split-diff') + '/lib/sync-scroll'
+        atom.themes.requireStylesheet(atom.packages.resolvePackagePath('split-diff') + '/styles/split-diff')
+      catch error
+        return atom.notifications.addInfo("Git Plus: Could not load 'split-diff' package to open diff view. Please install it `apm install split-diff`.")
 
-  @_loadFileContentA: (editorA, revA, filePathA, revB, filePathB) ->
-    fileContentA = ""
+    SplitDiff.disable(false)
+    @fileContentA = ""
+    @fileContentB = ""
+    promise = @_getRepo(filePathA)
+    @_loadfileContentA(editor, revA, filePathA, revB, filePathB)
+
+  @_loadfileContentA: (editorA, revA, filePathA, revB, filePathB) ->
+    @fileContentA = ""
     stdout = (output) ->
       console.log("OUTPUT", output)
-      fileContentA += output
+      @fileContentA += output
     stderr = (error) ->
       console.log("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
-      console.log("CODE", code, fileContentA)
+      console.log("CODE", code, @fileContentA)
       if code is 0
         outputFilePath = @_getFilePath(revA, filePathA)
         tempContent = "Loading..." + editor.buffer?.lineEndingForRow(0)
@@ -40,7 +48,7 @@ class GitRevisionView
               activateItem: true
               searchAllPanes: false
             promise.then (editor) ->
-              @_loadFileContentB(editorA, revA, filePathA, revB, filePathB)
+              @_loadfileContentB(editorA, revA, filePathA, revB, filePathB)
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathA)} (#{code})"
 
@@ -55,15 +63,15 @@ class GitRevisionView
       exit
     })
 
-  @_loadFileContentB: (editorA, revA, filePathA, revB, filePathB) ->
+  @_loadfileContentB: (editorA, revA, filePathA, revB, filePathB) ->
 
     stdout = (output) ->
-      fileContentB += output
+      @fileContentB += output
     stderr = (error) ->
       console.log("git-split-diff-hyperclick:ERROR:", error)
     exit = (code) =>
       if code is 0
-        @_showRevision(editorA, revA, filePathA, revB, filePathB, fileContentA, fileContentB)
+        @_showRevision(editorA, revA, filePathA, revB, filePathB, @fileContentA, @fileContentB)
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathB)} (#{code})"
 
@@ -118,62 +126,16 @@ class GitRevisionView
       editorB.setText(fileContents)
       editorB.buffer.cachedDiskContents = fileContents
       @_splitDiff(editor, editorB)
-      @_syncScroll(editor, editorB)
-      @_affixTabTitle editorB, gitRevision
     , 300
-
-
-  @_affixTabTitle: (newTextEditor, gitRevision) ->
-    $el = $(atom.views.getView(newTextEditor))
-    $tabTitle = $el.parents('atom-pane').find('li.tab.active .title')
-    titleText = $tabTitle.text()
-    if titleText.indexOf('@') >= 0
-      titleText = titleText.replace(/\@.*/, "@#{gitRevision}")
-    else
-      titleText += " @#{gitRevision}"
-    $tabTitle.text(titleText)
-
 
   @_splitDiff: (editor, newTextEditor) ->
     editors =
       editor1: newTextEditor    # the older revision
       editor2: editor           # current rev
-    SplitDiff._setConfig 'rightEditorColor', 'green'
-    SplitDiff._setConfig 'leftEditorColor', 'red'
     SplitDiff._setConfig 'diffWords', true
     SplitDiff._setConfig 'ignoreWhitespace', true
     SplitDiff._setConfig 'syncHorizontalScroll', true
-    SplitDiff.editorSubscriptions = new CompositeDisposable()
-    SplitDiff.editorSubscriptions.add editors.editor1.onDidStopChanging ->
-      SplitDiff.updateDiff(editors) if editors?
-    SplitDiff.editorSubscriptions.add editors.editor2.onDidStopChanging ->
-      SplitDiff.updateDiff(editors) if editors?
-    SplitDiff.editorSubscriptions.add editors.editor1.onDidDestroy ->
-      editors = null
-      SplitDiff.disable(false)
-    SplitDiff.editorSubscriptions.add editors.editor2.onDidDestroy ->
-      editors = null
-      SplitDiff.disable(false)
-    SplitDiff.updateDiff editors
-
-
-  @_syncScroll: (editor, newTextEditor) ->
-    _.delay =>
-      return if newTextEditor.isDestroyed()
-      newTextEditor.scrollToBufferPosition({row: @_getInitialLineNumber(editor), column: 0})
-    , 50
-
-  @_getRepo: (filePath) ->
-    new Promise (resolve, reject) ->
-      project = atom.project
-      filePath = path.join(atom.project.getPaths()[0], filePath)
-      console.log("PATH", filePath)
-      directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
-      if directory?
-        project.repositoryForDirectory(directory).then (repo) ->
-          submodule = repo.repo.submoduleForPath(filePath)
-          if submodule? then resolve(submodule) else resolve(repo)
-        .catch (e) ->
-          reject(e)
-      else
-        reject "no current file"
+    SplitDiff.diffPanes()
+    SplitDiff.updateDiff(editors)
+    syncScroll = new SyncScroll(editors.editor1, editors.editor2, true)
+    syncScroll.syncPositions()
