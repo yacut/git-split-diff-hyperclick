@@ -47,7 +47,7 @@ class GitRevisionView
             promise.then (editorA) ->
               self._loadfileContentB(editorA, revA, filePathA, revB, filePathB)
               try
-                disposables.add textEditor.onDidDestroy -> fs.unlink outputFilePath
+                disposables.add editorA.onDidDestroy -> fs.unlink outputFilePath
               catch error
                 return atom.notifications.addError error
       else
@@ -109,7 +109,7 @@ class GitRevisionView
         promise.then (editorB) =>
           @_updateNewTextEditor(editorA, editorB)
           try
-            disposables.add textEditor.onDidDestroy -> fs.unlink outputFilePath
+            disposables.add editorB.onDidDestroy -> fs.unlink outputFilePath
           catch error
             return atom.notifications.addError error
 
