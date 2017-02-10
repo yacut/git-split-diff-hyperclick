@@ -5,6 +5,7 @@ fs = require 'fs'
 {CompositeDisposable, BufferedProcess} = require "atom"
 {$} = require "atom-space-pen-views"
 
+disposables = new CompositeDisposable
 SplitDiff = null
 SyncScroll = null
 
