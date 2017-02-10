@@ -50,7 +50,7 @@ class GitRevisionView
               try
                 disposables.add editorA.onDidDestroy -> fs.unlink outputFilePath
               catch error
-                return atom.notifications.addError error
+                return atom.notifications.addError "Could not remove file #{outputFilePath}"
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathA)} (#{code})"
 
