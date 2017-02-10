@@ -93,7 +93,7 @@ class GitRevisionView
       return lineNumber - 5
 
   @_getFilePath: (rev, filePath) ->
-    outputDir = "#{atom.getConfigDirPath()}/git-plus"
+    outputDir = "#{atom.getConfigDirPath()}/git-split-diff-hyperclick"
     fs.mkdir outputDir if not fs.existsSync outputDir
     return "#{outputDir}/#{rev}##{path.basename(filePath)}"
 
