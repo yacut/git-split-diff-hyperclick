@@ -46,6 +46,10 @@ class GitRevisionView
               searchAllPanes: false
             promise.then (editorA) ->
               self._loadfileContentB(editorA, revA, filePathA, revB, filePathB)
+              try
+                disposables.add textEditor.onDidDestroy -> fs.unlink outputFilePath
+              catch error
+                return atom.notifications.addError error
       else
         atom.notifications.addError "Could not retrieve revision for #{path.basename(filePathA)} (#{code})"
 
@@ -104,6 +108,10 @@ class GitRevisionView
           searchAllPanes: false
         promise.then (editorB) =>
           @_updateNewTextEditor(editorA, editorB)
+          try
+            disposables.add textEditor.onDidDestroy -> fs.unlink outputFilePath
+          catch error
+            return atom.notifications.addError error
 
 
   @_updateNewTextEditor: (editorA, editorB) ->
