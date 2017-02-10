@@ -112,7 +112,7 @@ class GitRevisionView
           try
             disposables.add editorB.onDidDestroy -> fs.unlink outputFilePath
           catch error
-            return atom.notifications.addError error
+            return atom.notifications.addError "Could not remove file #{outputFilePath}"
 
 
   @_updateNewTextEditor: (editorA, editorB) ->
