@@ -20,7 +20,8 @@
     "underscore-plus": "^1.6.6"
   },
   "package-deps": [
-    "hyperclick"
+    "hyperclick",
+    "split-diff"
   ],
   "providedServices": {
     "hyperclick.provider": {
