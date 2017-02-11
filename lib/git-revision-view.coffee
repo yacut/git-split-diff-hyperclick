@@ -24,12 +24,13 @@ class GitRevisionView
         return atom.notifications.addInfo("Git Plus: Could not load 'split-diff' package to open diff view. Please install it `apm install split-diff`.")
 
     SplitDiff.disable(false)
-    @fileContentA = ""
-    @fileContentB = ""
-    promise = @_getRepo(filePathA)
-    @_loadfileContentA(revA, filePathA, revB, filePathB)
+    self = @
+    self.fileContentA = ""
+    self.fileContentB = ""
+    self._getRepo(filePathA).then (repo) ->
+      self._loadfileContentA(repo, revA, filePathA, revB, filePathB)
 
-  @_loadfileContentA: (revA, filePathA, revB, filePathB) ->
+  @_loadfileContentA: (repo, revA, filePathA, revB, filePathB) ->
     self = @
     stdout = (output) ->
       self.fileContentA += output
@@ -47,7 +48,7 @@ class GitRevisionView
               searchAllPanes: false
             promise.then (editorA) ->
               editorA.setSoftWrapped(false)
-              self._loadfileContentB(editorA, revA, filePathA, revB, filePathB)
+              self._loadfileContentB(repo, editorA, revA, filePathA, revB, filePathB)
               try
                 disposables.add editorA.onDidDestroy -> fs.unlink outputFilePath
               catch error
@@ -59,13 +60,13 @@ class GitRevisionView
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
-      options: { cwd:atom.project.getPaths()[0] },
+      options: { cwd:repo?.getWorkingDirectory() },
       stdout,
       stderr,
       exit
     })
 
-  @_loadfileContentB: (editorA, revA, filePathA, revB, filePathB) ->
+  @_loadfileContentB: (repo, editorA, revA, filePathA, revB, filePathB) ->
     self = @
     stdout = (output) ->
       self.fileContentB += output
@@ -81,7 +82,7 @@ class GitRevisionView
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
-      options: { cwd:atom.project.getPaths()[0] },
+      options: { cwd:repo?.getWorkingDirectory() },
       stdout,
       stderr,
       exit
