@@ -46,6 +46,7 @@ class GitRevisionView
               activateItem: true
               searchAllPanes: false
             promise.then (editorA) ->
+              editorA.setSoftWrapped(false)
               self._loadfileContentB(editorA, revA, filePathA, revB, filePathB)
               try
                 disposables.add editorA.onDidDestroy -> fs.unlink outputFilePath
@@ -101,6 +102,7 @@ class GitRevisionView
           activateItem: true
           searchAllPanes: false
         promise.then (editorB) =>
+          editorB.setSoftWrapped(false)
           @_splitDiff(editorA, editorB)
           try
             disposables.add editorB.onDidDestroy -> fs.unlink outputFilePath
