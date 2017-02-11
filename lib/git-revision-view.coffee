@@ -41,7 +41,7 @@ class GitRevisionView
         fs.writeFile outputFilePath, self.fileContentA, (error) ->
           if not error
             promise = atom.workspace.open outputFilePath,
-              split: "left"
+              split: "up"
               activatePane: true
               activateItem: true
               searchAllPanes: false
@@ -86,13 +86,6 @@ class GitRevisionView
       exit
     })
 
-  @_getInitialLineNumber: (editor) ->
-    editorEle = atom.views.getView editor
-    lineNumber = 0
-    if editor? && editor != ''
-      lineNumber = editorEle.getLastVisibleScreenRow()
-      return lineNumber - 5
-
   @_getFilePath: (rev, filePath) ->
     outputDir = "#{atom.getConfigDirPath()}/git-split-diff-hyperclick"
     fs.mkdir outputDir if not fs.existsSync outputDir
@@ -104,22 +97,15 @@ class GitRevisionView
       if not error
         promise = atom.workspace.open outputFilePath,
           split: "right"
-          activatePane: false
+          activatePane: true
           activateItem: true
           searchAllPanes: false
         promise.then (editorB) =>
-          @_updateNewTextEditor(editorA, editorB)
+          @_splitDiff(editorA, editorB)
           try
             disposables.add editorB.onDidDestroy -> fs.unlink outputFilePath
           catch error
             return atom.notifications.addError "Could not remove file #{outputFilePath}"
-
-
-  @_updateNewTextEditor: (editorA, editorB) ->
-    _.delay =>
-      @_splitDiff(editorA, editorB)
-    , 300
-
 
   @_splitDiff: (editorA, editorB) ->
     editors =
