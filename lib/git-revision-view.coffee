@@ -28,9 +28,13 @@ class GitRevisionView
     self.fileContentA = ""
     self.fileContentB = ""
     self._getRepo(filePathA).then (repo) ->
-      self._loadfileContentA(repo, revA, filePathA, revB, filePathB)
+      if not repo
+        cwd = atom.project.getPaths()[0]
+      else
+        cwd = repo.getWorkingDirectory()
+      self._loadfileContentA(cwd, revA, filePathA, revB, filePathB)
 
-  @_loadfileContentA: (repo, revA, filePathA, revB, filePathB) ->
+  @_loadfileContentA: (cwd, revA, filePathA, revB, filePathB) ->
     self = @
     stdout = (output) ->
       self.fileContentA += output
@@ -48,7 +52,7 @@ class GitRevisionView
               searchAllPanes: false
             promise.then (editorA) ->
               editorA.setSoftWrapped(false)
-              self._loadfileContentB(repo, editorA, revA, filePathA, revB, filePathB)
+              self._loadfileContentB(cwd, editorA, revA, filePathA, revB, filePathB)
               try
                 disposables.add editorA.onDidDestroy -> fs.unlink outputFilePath
               catch error
@@ -60,13 +64,13 @@ class GitRevisionView
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
-      options: { cwd:repo?.getWorkingDirectory() },
+      options: { cwd:cwd },
       stdout,
       stderr,
       exit
     })
 
-  @_loadfileContentB: (repo, editorA, revA, filePathA, revB, filePathB) ->
+  @_loadfileContentB: (cwd, editorA, revA, filePathA, revB, filePathB) ->
     self = @
     stdout = (output) ->
       self.fileContentB += output
@@ -82,7 +86,7 @@ class GitRevisionView
     process = new BufferedProcess({
       command: "git",
       args: showArgs,
-      options: { cwd:repo?.getWorkingDirectory() },
+      options: { cwd:cwd },
       stdout,
       stderr,
       exit
@@ -123,14 +127,14 @@ class GitRevisionView
     syncScroll.syncPositions()
 
   @_getRepo: (filePath) -> new Promise (resolve, reject) ->
-      project = atom.project
-      filePath = path.join(atom.project.getPaths()[0], filePath)
-      directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
-      if directory?
-        project.repositoryForDirectory(directory).then (repo) ->
-          submodule = repo.repo.submoduleForPath(filePath)
-          if submodule? then resolve(submodule) else resolve(repo)
-        .catch (e) ->
-          reject(e)
-      else
-        reject "no current file"
+    project = atom.project
+    filePath = path.join(atom.project.getPaths()[0], filePath)
+    directory = project.getDirectories().filter((d) -> d.contains(filePath))[0]
+    if directory?
+      project.repositoryForDirectory(directory).then (repo) ->
+        submodule = repo.repo.submoduleForPath(filePath)
+        if submodule? then resolve(submodule) else resolve(repo)
+      .catch (e) ->
+        reject(e)
+    else
+      reject "no current file"
