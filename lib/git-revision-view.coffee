@@ -113,6 +113,11 @@ class GitRevisionView
             disposables.add editorB.onDidDestroy -> fs.unlink outputFilePath
           catch error
             return atom.notifications.addError "Could not remove file #{outputFilePath}"
+          try
+            disposables.add editorA.onDidDestroy -> editorB.destroy()
+            disposables.add editorB.onDidDestroy -> editorA.destroy()
+          catch error
+            return atom.notifications.addError "Could not close diff panels."
 
   @_splitDiff: (editorA, editorB) ->
     editors =
