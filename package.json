@@ -1,7 +1,7 @@
 {
   "name": "git-split-diff-hyperclick",
   "main": "./lib/main",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "Git split diff with hyperclick",
   "keywords": [
     "hyperclick",
