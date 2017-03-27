@@ -19,14 +19,20 @@ module.exports =
           editor = textEditor
           rangeIndex = new Range(new Point(point.row, 0), new Point(point.row, 1000))
           gitIndexString = editor.getTextInBufferRange(rangeIndex)
+          rangeDiffNamed = new Range(new Point(point.row - 4, 0), new Point(point.row, 1000))
+          gitDiffNamedString = editor.getTextInBufferRange(rangeDiffNamed)
+          diffNamedMatched = gitDiffNamedString.match this.diffRegex
           rangeDiff = new Range(new Point(point.row - 1, 0), new Point(point.row, 1000))
           gitDiffString = editor.getTextInBufferRange(rangeDiff)
           diffMatched = gitDiffString.match this.diffRegex
           indexMatched = gitIndexString.match this.indexRegex
-          if !indexMatched || !diffMatched
+          if !indexMatched || !(diffMatched|| diffNamedMatched)
             return undefined
           else
-            [diffMatched, filePathA, filePathB] = gitDiffString.match this.diffRegex
+            if diffNamedMatched
+              [diffMatched, filePathA, filePathB] = gitDiffNamedString.match this.diffRegex
+            else
+              [diffMatched, filePathA, filePathB] = gitDiffString.match this.diffRegex
             [indexMatched, revA, revB] = gitIndexString.match this.indexRegex
             return {
               range: rangeIndex,
