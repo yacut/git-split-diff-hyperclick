@@ -1,6 +1,6 @@
 # git-split-diff-hyperclick package
 
-[![Donate Bitcoin](https://img.shields.io/badge/donate-$10-orange.svg)](https://blockchain.info/payment_request?address=1Ndg2GN1r4UfyqBtAUgLmVVjv8a9xYokU5&message=I+like+your+GitHub+Project!&amount_local=10&currency=USD&nosavecurrency=true)
+[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://blockchain.info/payment_request?address=1Ndg2GN1r4UfyqBtAUgLmVVjv8a9xYokU5&message=I+like+your+GitHub+Project!)
 ![Build Status](https://travis-ci.org/yacut/git-split-diff-hyperclick.svg?branch=master)
 [![APM Version](https://img.shields.io/apm/v/git-split-diff-hyperclick.svg)](https://atom.io/packages/git-split-diff-hyperclick)
 [![APM Downloads](https://img.shields.io/apm/dm/git-split-diff-hyperclick.svg)](https://atom.io/packages/git-split-diff-hyperclick)
